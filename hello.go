@@ -69,6 +69,11 @@ func register(w http.ResponseWriter, r *http.Request) {
 
 	r.ParseForm()
 
+	if r.Form.Encode() == "" {
+		sendResonseMessage(w, 7, "Empty post form")
+		return
+	}
+
 	var data RegisterData
 	err := r.ParseForm()
 	if err != nil {
@@ -83,6 +88,25 @@ func register(w http.ResponseWriter, r *http.Request) {
 
 	db.Begin()
 
+	querySelect, err := db.Query("SELECT COUNT(*) FROM (SELECT * FROM user where username='" + data.Username + "') AS Count;")
+
+	querySelect.Next()
+
+	if err != nil {
+		sendResonseMessage(w, 2, "Error with Database")
+		fmt.Println(err)
+	}
+	var Count int
+	err = querySelect.Scan(&Count)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	if Count > 0 {
+		sendResonseMessage(w, 8, "Username already exists")
+		return
+	}
 	insert, err := db.Query("INSERT INTO user (user_id, username, password, email) VALUES(DEFAULT, '" + r.Form.Get("username") + "', '" + (data.Password) + "', '" + (data.Email) + "');")
 
 	if err != nil {
