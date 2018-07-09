@@ -31,7 +31,17 @@ type ResponseMessage struct {
 
 func login(w http.ResponseWriter, r *http.Request) {
 
+	if !checkAuth(r) {
+		sendResonseMessage(w, 8, "Authentication needed!")
+		return
+	}
+
 	err := r.ParseForm()
+
+	if r.Form.Encode() == "" {
+		sendResonseMessage(w, 7, "Empty post form")
+		return
+	}
 
 	if err != nil {
 		sendResonseMessage(w, 5, "Error with form data")
@@ -66,6 +76,11 @@ func login(w http.ResponseWriter, r *http.Request) {
 }
 
 func register(w http.ResponseWriter, r *http.Request) {
+
+	if !checkAuth(r) {
+		sendResonseMessage(w, 8, "Authentication needed!")
+		return
+	}
 
 	r.ParseForm()
 
@@ -118,6 +133,61 @@ func register(w http.ResponseWriter, r *http.Request) {
 	insert.Close()
 }
 
+func forgottenPassword(w http.ResponseWriter, r *http.Request) {
+	if !checkAuth(r) {
+		sendResonseMessage(w, 8, "Authentication needed!")
+		return
+	}
+
+	err = r.ParseForm()
+
+	if r.Form.Encode() == "" {
+		sendResonseMessage(w, 7, "Empty post form")
+		return
+	}
+
+	if err != nil {
+		sendResonseMessage(w, 3, "Error with Form data")
+		return
+	}
+
+	var data LoginData
+
+	data.Username = r.FormValue("username")
+	data.Email = r.FormValue("email")
+
+	selectQuery, err := db.Query("SELECT * FROM user WHERE username='" + data.Username + "' AND email='" + data.Email + "'")
+
+	if err != nil {
+		sendResonseMessage(w, 2, "Error with Database")
+		fmt.Println(err)
+		return
+	}
+
+	for selectQuery.Next() {
+		var data LoginData
+
+		data.Password = ""
+
+		err = selectQuery.Scan(&data.UserId, &data.Username, &data.Password, &data.Email)
+		if err != nil {
+			panic(err.Error())
+			sendResonseMessage(w, 6, "Error with Database")
+		}
+
+		if data.Password == "" {
+			sendResonseMessage(w, 9, "Username and Email doesn't match any user")
+			return
+		}
+
+		decoded, err := json.Marshal(data)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Fprintln(w, string(decoded))
+	}
+}
+
 func sendResonseMessage(w http.ResponseWriter, code int, message string) {
 	var response ResponseMessage
 	response.Code = code
@@ -130,6 +200,14 @@ func sendResonseMessage(w http.ResponseWriter, code int, message string) {
 	fmt.Fprintln(w, string(decoded))
 }
 
+func checkAuth(r *http.Request) bool {
+
+	if r.Header.Get("auth") != "K7DT8M18PLOM" || r.Header.Get("auth") == "" {
+		return false
+	}
+	return true
+}
+
 func main() {
 
 	mux := http.NewServeMux()
@@ -139,22 +217,22 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 		db.Close()
+		return
 	}
-
-	if err != nil {
-		fmt.Println(err)
-	}
-	// be careful deferring Queries if you are using transactions
-	//defer insert.Close()
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello, you've requested: %s\n", r.URL.Path)
+		auth := r.Header.Get("auth")
+		if auth == "K7DT8M18PLOM" {
+			fmt.Fprintln(w, "List of active API end points ")
+			fmt.Fprintln(w, "Register: /register \nLogin: /login\nForgotten Password /forgottenPassword")
+		} else {
+			fmt.Fprintln(w, "Autentification needed!!")
+		}
 	})
 
 	mux.HandleFunc("/login", login)
 	mux.HandleFunc("/register", register)
+	mux.HandleFunc("/forgottenPassword", forgottenPassword)
 
 	http.ListenAndServe(":80", mux)
-
-	fmt.Println("Hello world!")
 }
