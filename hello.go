@@ -29,6 +29,10 @@ type ResponseMessage struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 }
+type Friend struct {
+	UserId   int    `json:"user_id"`
+	Username string `json:"username"`
+}
 
 var query list.List
 
@@ -292,6 +296,51 @@ func resetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func getFriendList(w http.ResponseWriter, r *http.Request) {
+
+	if !checkAuth(r) {
+		sendResonseMessage(w, 8, "Authentication needed!")
+		return
+	}
+
+	err = r.ParseForm()
+
+	if r.Form.Encode() == "" {
+		sendResonseMessage(w, 7, "Empty post form")
+		return
+	}
+
+	if err != nil {
+		sendResonseMessage(w, 3, "Error with Form data")
+		return
+	}
+
+	userId := r.FormValue("user_id")
+
+	selectQuery, err := db.Query("SELECT us.user_id, us.username FROM friendList f JOIN user u ON f.user_id = u.user_id JOIN user us ON us.user_id = f.friend_id WHERE u.user_id=" + userId)
+
+	if err != nil {
+		panic(err)
+		sendResonseMessage(w, 2, "Error with Database")
+		return
+	}
+
+	var user Friend
+	lista := []Friend{}
+
+	for selectQuery.Next() {
+		selectQuery.Scan(&user.UserId, &user.Username)
+
+		lista = append(lista, user)
+	}
+	decoded, err := json.Marshal(lista)
+	if err != nil {
+		panic(err)
+		sendResonseMessage(w, 10, "Internal error")
+	}
+	fmt.Fprint(w, string(decoded))
+}
+
 func sendResonseMessage(w http.ResponseWriter, code int, message string) {
 	var response ResponseMessage
 	response.Code = code
@@ -328,7 +377,8 @@ func main() {
 		auth := r.Header.Get("auth")
 		if auth == "K7DT8M18PLOM" {
 			fmt.Fprintln(w, "List of active API end points ")
-			fmt.Fprintln(w, "Register: /register \nLogin: /login\nForgotten Password /forgottenPassword\nReset Password /resetPassword\nGet in query /getInQuery")
+			fmt.Fprintln(w, "Register: /register \nLogin: /login\nForgotten Password /forgottenPassword\nReset Password /resetPassword\nGet in query /getInQuery"+
+				"\n/GetFriendList: /getFriendList ")
 		} else {
 			fmt.Fprintln(w, "Autentification needed!!")
 		}
@@ -339,6 +389,7 @@ func main() {
 	mux.HandleFunc("/forgottenPassword", forgottenPassword)
 	mux.HandleFunc("/resetPassword", resetPassword)
 	mux.HandleFunc("/getInQuery", getInQuery)
+	mux.HandleFunc("/getFriendList", getFriendList)
 
 	http.ListenAndServe(":80", mux)
 }
