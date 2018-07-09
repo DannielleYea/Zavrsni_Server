@@ -6,6 +6,7 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"net/http"
+	"container/list"
 )
 
 var db *sql.DB
@@ -28,6 +29,8 @@ type ResponseMessage struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 }
+
+var query list.List
 
 func login(w http.ResponseWriter, r *http.Request) {
 
@@ -70,6 +73,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 		decoded, err := json.Marshal(data)
 		if err != nil {
 			panic(err)
+			sendResonseMessage(w, 10, "Internal error")
 		}
 		fmt.Fprintln(w, string(decoded))
 	}
@@ -183,8 +187,108 @@ func forgottenPassword(w http.ResponseWriter, r *http.Request) {
 		decoded, err := json.Marshal(data)
 		if err != nil {
 			panic(err)
+			sendResonseMessage(w, 10, "Internal error")
 		}
 		fmt.Fprintln(w, string(decoded))
+	}
+}
+
+func getInQuery(w http.ResponseWriter, r *http.Request) {
+	if !checkAuth(r) {
+		sendResonseMessage(w, 8, "Authentication needed!")
+		return
+	}
+
+	err = r.ParseForm()
+
+	if r.Form.Encode() == "" {
+		sendResonseMessage(w, 7, "Empty post form")
+		return
+	}
+
+	if err != nil {
+		sendResonseMessage(w, 3, "Error with Form data")
+		return
+	}
+
+	var user LoginData
+
+	userId := r.FormValue("user_id")
+
+	queryResult, err := db.Query("SELECT * FROM user WHERE user_id='" + userId + "'")
+
+	if err != nil {
+		panic(err)
+		sendResonseMessage(w, 9, "User Id doesn't exist")
+	}
+
+	for queryResult.Next() {
+		queryResult.Scan(&user.UserId, &user.Username, user.Password, &user.Email)
+	}
+
+	fmt.Println(query)
+	query.PushBack(user)
+	fmt.Println(query)
+
+}
+
+func resetPassword(w http.ResponseWriter, r *http.Request) {
+
+	if !checkAuth(r) {
+		sendResonseMessage(w, 8, "Authentication needed!")
+		return
+	}
+
+	err = r.ParseForm()
+
+	if r.Form.Encode() == "" {
+		sendResonseMessage(w, 7, "Empty post form")
+		return
+	}
+
+	if err != nil {
+		sendResonseMessage(w, 3, "Error with Form data")
+		return
+	}
+
+	var data LoginData
+
+	password := r.FormValue("password")
+	repeatedPassword := r.FormValue("repeated_password")
+	data.Email = r.FormValue("email")
+	data.Password = r.FormValue("new_password")
+
+	if data.Password == repeatedPassword {
+		queryResult, err := db.Query("SELECT * FROM user WHERE email='" + data.Email + "' AND password='" + password + "'")
+
+		if err != nil {
+			panic(err)
+			sendResonseMessage(w, 9, "Username and Email doesn't match any user")
+		}
+
+		var pass string
+		for queryResult.Next() {
+			queryResult.Scan(&data.UserId, &data.Username, pass, &data.Email)
+
+			decoded, err := json.Marshal(data)
+			if err != nil {
+				panic(err)
+				sendResonseMessage(w, 10, "Internal error")
+			}
+			fmt.Fprintln(w, string(decoded))
+
+			insert, err := db.Query("UPDATE user SET password='" + data.Password + "' WHERE user_id=" + data.UserId + ";")
+
+			if err != nil {
+				sendResonseMessage(w, 2, "Error with Database")
+				fmt.Println(err)
+			}
+
+			sendResonseMessage(w, 11, "Password updated successfully")
+			insert.Close()
+		}
+	} else {
+		sendResonseMessage(w, 12, "Password are not equal")
 	}
 }
 
@@ -224,7 +328,7 @@ func main() {
 		auth := r.Header.Get("auth")
 		if auth == "K7DT8M18PLOM" {
 			fmt.Fprintln(w, "List of active API end points ")
-			fmt.Fprintln(w, "Register: /register \nLogin: /login\nForgotten Password /forgottenPassword")
+			fmt.Fprintln(w, "Register: /register \nLogin: /login\nForgotten Password /forgottenPassword\nReset Password /resetPassword\nGet in query /getInQuery")
 		} else {
 			fmt.Fprintln(w, "Autentification needed!!")
 		}
@@ -233,6 +337,8 @@ func main() {
 	mux.HandleFunc("/login", login)
 	mux.HandleFunc("/register", register)
 	mux.HandleFunc("/forgottenPassword", forgottenPassword)
+	mux.HandleFunc("/resetPassword", resetPassword)
+	mux.HandleFunc("/getInQuery", getInQuery)
 
 	http.ListenAndServe(":80", mux)
 }
