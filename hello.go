@@ -7,10 +7,17 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"net/http"
 	"container/list"
+	//"time"
 )
 
 var db *sql.DB
 var err error
+type QueryUser struct {
+	user   LoginData
+	writer http.ResponseWriter
+}
+
+var queryData []QueryUser
 
 type RegisterData struct {
 	Username string `json:"username"`
@@ -19,10 +26,10 @@ type RegisterData struct {
 }
 
 type LoginData struct {
+	UserId   string `json:"user_id"`
 	Username string `json:"username"`
 	Password string `json:"password"`
 	Email    string `json:"email"`
-	UserId   string `json:"user_id"`
 }
 
 type ResponseMessage struct {
@@ -230,9 +237,11 @@ func getInQuery(w http.ResponseWriter, r *http.Request) {
 		queryResult.Scan(&user.UserId, &user.Username, user.Password, &user.Email)
 	}
 
-	fmt.Println(query)
-	query.PushBack(user)
-	fmt.Println(query)
+	var query QueryUser
+	query.user = user
+	query.writer = w
+
+	queryData = append(queryData, query)
 
 }
 
@@ -341,6 +350,49 @@ func getFriendList(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, string(decoded))
 }
 
+func getUserById(w http.ResponseWriter, r *http.Request) {
+
+	if !checkAuth(r) {
+		sendResonseMessage(w, 8, "Authentication needed!")
+		return
+	}
+
+	err = r.ParseForm()
+
+	if r.Form.Encode() == "" {
+		sendResonseMessage(w, 7, "Empty post form")
+		return
+	}
+
+	if err != nil {
+		sendResonseMessage(w, 3, "Error with Form data")
+		return
+	}
+
+	userId := r.FormValue("user_id")
+
+	seletQuery, err := db.Query("SELECT * FROM user WHERE user_id=" + userId)
+
+	if err != nil {
+		panic(err)
+		sendResonseMessage(w, 9, "Username and Email doesn't match any user")
+	}
+
+	for seletQuery.Next() {
+		var user LoginData
+
+		seletQuery.Scan(&user.UserId, &user.Username, &user.Password, &user.Email)
+
+		decoded, err := json.Marshal(user)
+		if err != nil {
+			panic(err)
+			sendResonseMessage(w, 10, "Internal error")
+		}
+		fmt.Fprint(w, string(decoded))
+	}
+
+}
+
 func sendResonseMessage(w http.ResponseWriter, code int, message string) {
 	var response ResponseMessage
 	response.Code = code
@@ -363,6 +415,7 @@ func checkAuth(r *http.Request) bool {
 
 func main() {
 
+	start("192.168.1.7:1000")
 	mux := http.NewServeMux()
 
 	db, err = sql.Open("mysql", "root:xKji27rC@tcp(localhost:3306)/mydb")
@@ -378,7 +431,7 @@ func main() {
 		if auth == "K7DT8M18PLOM" {
 			fmt.Fprintln(w, "List of active API end points ")
 			fmt.Fprintln(w, "Register: /register \nLogin: /login\nForgotten Password /forgottenPassword\nReset Password /resetPassword\nGet in query /getInQuery"+
-				"\n/GetFriendList: /getFriendList ")
+				"\n/GetFriendList: /getFriendList\nGet user by Id: /getUserById ")
 		} else {
 			fmt.Fprintln(w, "Autentification needed!!")
 		}
@@ -390,6 +443,7 @@ func main() {
 	mux.HandleFunc("/resetPassword", resetPassword)
 	mux.HandleFunc("/getInQuery", getInQuery)
 	mux.HandleFunc("/getFriendList", getFriendList)
+	mux.HandleFunc("/getUserById", getUserById)
 
 	http.ListenAndServe(":80", mux)
 }
