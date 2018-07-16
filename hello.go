@@ -70,6 +70,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		sendResonseMessage(w, 4, "Error with Database")
+		return
 	}
 
 	for selectResult.Next() {
@@ -415,7 +416,7 @@ func checkAuth(r *http.Request) bool {
 
 func main() {
 
-	start("192.168.1.7:1000")
+	go start("192.168.5.10:1000")
 	mux := http.NewServeMux()
 
 	db, err = sql.Open("mysql", "root:xKji27rC@tcp(localhost:3306)/mydb")
