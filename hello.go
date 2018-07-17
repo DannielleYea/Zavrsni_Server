@@ -10,6 +10,8 @@ import (
 	//"time"
 )
 
+const addr = "192.168.5.19"
+
 var db *sql.DB
 var err error
 
@@ -19,6 +21,12 @@ type QueryUser struct {
 }
 
 var queryData []QueryUser
+
+type SendData struct {
+	Code    int       `json:"code"`
+	Message string    `json:"message"`
+	Data    LoginData `json:"data"`
+}
 
 type RegisterData struct {
 	Username string `json:"username"`
@@ -77,19 +85,27 @@ func login(w http.ResponseWriter, r *http.Request) {
 	for selectResult.Next() {
 		var data LoginData
 
-		err = selectResult.Scan(&data.Username, &data.Password, &data.Email, &data.UserId)
+		err = selectResult.Scan(&data.UserId, &data.Username, &data.Password, &data.Email)
 		if err != nil {
 			panic(err.Error())
 			sendResonseMessage(w, 6, "Error with Database")
 		}
 
-		decoded, err := json.Marshal(data)
+		var send SendData
+		send.Code = 1
+		send.Data = data
+
+		decoded, err := json.Marshal(send)
 		if err != nil {
 			panic(err)
-			sendResonseMessage(w, 10, "Internal error")
+			sendResonseMessage(w, 10, "Internal error - parsing JSON")
 		}
 		fmt.Fprintln(w, string(decoded))
+		return
 	}
+
+	sendResonseMessage(w, 12, "Wrong username/password")
+
 }
 
 func register(w http.ResponseWriter, r *http.Request) {
@@ -146,7 +162,36 @@ func register(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 	}
 
-	sendResonseMessage(w, 1, "User registered successfully")
+	registeredUser, err := db.Query("SELECT * FROM user WHERE username='" + r.Form.Get("username") + "';")
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	for registeredUser.Next() {
+		var data LoginData
+
+		err = registeredUser.Scan(&data.UserId, &data.Username, &data.Password, &data.Email)
+		if err != nil {
+			panic(err.Error())
+			sendResonseMessage(w, 6, "Error with Database")
+		}
+
+		var send SendData
+		send.Code = 1
+		send.Data = data
+
+		decoded, err := json.Marshal(send)
+		if err != nil {
+			panic(err)
+			sendResonseMessage(w, 10, "Internal error - parsing JSON")
+		}
+		fmt.Fprintln(w, string(decoded))
+		return
+	}
+
+	//sendResonseMessage(w, 1, "User registered successfully")
 	insert.Close()
 }
 
@@ -244,6 +289,9 @@ func getInQuery(w http.ResponseWriter, r *http.Request) {
 	query.writer = w
 
 	queryData = append(queryData, query)
+
+	fmt.Fprintln(w, []byte(addr))
+	fmt.Println([]byte(addr))
 
 }
 
@@ -417,8 +465,8 @@ func checkAuth(r *http.Request) bool {
 
 func main() {
 
-	go startGameServer("192.168.5.19:1010")
-	go start("192.168.5.19:1000")
+	go startGameServer(addr + ":1010")
+	go start(addr + ":1000")
 	mux := http.NewServeMux()
 
 	db, err = sql.Open("mysql", "root:xKji27rC@tcp(localhost:3306)/mydb")
