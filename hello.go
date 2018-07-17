@@ -12,6 +12,7 @@ import (
 
 var db *sql.DB
 var err error
+
 type QueryUser struct {
 	user   LoginData
 	writer http.ResponseWriter
@@ -416,7 +417,8 @@ func checkAuth(r *http.Request) bool {
 
 func main() {
 
-	go start("192.168.5.10:1000")
+	go startGameServer("192.168.5.19:1010")
+	go start("192.168.5.19:1000")
 	mux := http.NewServeMux()
 
 	db, err = sql.Open("mysql", "root:xKji27rC@tcp(localhost:3306)/mydb")

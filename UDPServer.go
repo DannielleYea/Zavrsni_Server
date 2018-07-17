@@ -32,33 +32,36 @@ func start(port string) {
 		return
 	}
 
-	//go matchMakingAlgorithm()
+	go matchMakingAlgorithm(conn)
 
 	for {
 		handleConnection(conn)
 	}
 }
 
-func matchMakingAlgorithm() {
+func matchMakingAlgorithm(con *net.UDPConn) {
 	for {
 		if len(queue) >= 2 {
-			conn.WriteTo([]byte("{\"game_id\":\"asfjhasf\"}"), queue[0].address)
-			conn.WriteTo([]byte("{\"game_id\":\"asfjhasf\"}"), queue[1].address)
+			fmt.Println("Game found")
+			con.WriteTo([]byte("{\"game_id\":\"asfjhasf\"}"), queue[1].address)
+			con.WriteTo([]byte("{\"game_id\":\"asfjhasf\"}"), queue[0].address)
+			//y := findElementIndex(queue[1].userId)
+			//queue = append(queue[:0], queue[1:]...)
+			dealocateElement(&queue[0])
+			//queue = append(queue[:0], queue[1:]...)
+			dealocateElement(&queue[0])
+			//x := findElementIndex(queue[0].userId)
 
 			go func() {
-				x := findElementIndex(queue[0].userId)
-				queue = append(queue[:x], queue[x+1:]...)
-			}()
-
-			go func() {
-				y := findElementIndex(queue[1].userId)
-				queue = append(queue[:y], queue[y+1:]...)
 			}()
 
 		} else {
 			time.Sleep(time.Second)
 		}
 	}
+}
+func dealocateElement(p *player) {
+	p = nil
 }
 
 func handleConnection(con *net.UDPConn) {
@@ -123,6 +126,7 @@ func checkAlive(userId string) {
 	index := findElementIndex(userId)
 
 	if index >= 0 {
+		dealocateElement(&queue[index])
 		queue = append(queue[:index], queue[index+1:]...)
 	}
 
