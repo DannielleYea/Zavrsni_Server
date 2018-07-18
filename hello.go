@@ -290,8 +290,14 @@ func getInQuery(w http.ResponseWriter, r *http.Request) {
 
 	queryData = append(queryData, query)
 
-	fmt.Fprintln(w, []byte(addr))
-	fmt.Println([]byte(addr))
+	decoded, err := json.Marshal([]byte(addr))
+
+	if err != nil {
+		panic(err)
+		sendResonseMessage(w, 10, "Internal error")
+	}
+	fmt.Fprint(w, string(decoded))
+	fmt.Println(string(decoded))
 
 }
 
