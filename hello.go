@@ -10,7 +10,7 @@ import (
 	//"time"
 )
 
-const addr = "192.168.5.19"
+var addr = "192.168.5.19"
 
 var db *sql.DB
 var err error
@@ -290,14 +290,14 @@ func getInQuery(w http.ResponseWriter, r *http.Request) {
 
 	queryData = append(queryData, query)
 
-	decoded, err := json.Marshal([]byte(addr))
+	decoded, err := json.Marshal(addr)
 
 	if err != nil {
 		panic(err)
 		sendResonseMessage(w, 10, "Internal error")
 	}
 	fmt.Fprint(w, string(decoded))
-	fmt.Println(string(decoded))
+	fmt.Println(addr)
 
 }
 
@@ -471,7 +471,7 @@ func checkAuth(r *http.Request) bool {
 
 func main() {
 
-	go startGameServer(addr + ":1010")
+
 	go start(addr + ":1000")
 	mux := http.NewServeMux()
 
@@ -502,5 +502,7 @@ func main() {
 	mux.HandleFunc("/getFriendList", getFriendList)
 	mux.HandleFunc("/getUserById", getUserById)
 
-	http.ListenAndServe(":80", mux)
+	go http.ListenAndServe(":80", mux)
+	startGameServer(addr + ":5000")
+
 }

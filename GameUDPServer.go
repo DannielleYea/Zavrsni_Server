@@ -3,7 +3,6 @@ package main
 import (
 	"net"
 	"fmt"
-	"strings"
 )
 
 func startGameServer(address string) {
@@ -16,7 +15,8 @@ func startGameServer(address string) {
 		return
 	}
 
-	conn, err = net.ListenUDP("udp", udpAddr)
+	gameConn, err := net.ListenUDP("udp", udpAddr)
+	fmt.Println("Started listening: Game server")
 
 	if err != nil {
 		panic(err)
@@ -24,24 +24,24 @@ func startGameServer(address string) {
 	}
 
 	for {
-		startListening(conn)
+		startListening(gameConn)
 	}
 }
 
-func startListening(udpConn *net.UDPConn) {
-	var buffer = make([]byte, 1024)
-	_, addr, err := udpConn.ReadFromUDP(buffer)
+func startListening(gameConn *net.UDPConn) {
+	buffer := make([]byte, 1024)
+	_, addr, err := gameConn.ReadFromUDP(buffer)
 
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	go handleMove(udpConn, addr, &buffer)
+	go handleMove(gameConn, addr, buffer)
 }
 
-func handleMove(udpConn *net.UDPConn, addr *net.UDPAddr, buffer *[]byte) {
-	fmt.Println(string(*buffer))
-	strings.Contains(string(*buffer), "game_id")
-	*buffer = nil
+func handleMove(gameConn *net.UDPConn, addr *net.UDPAddr, buffer []byte) {
+	fmt.Println(string(buffer))
+	//*buffer = nil
+	gameConn.WriteTo([]byte("ACK"), addr)
 }

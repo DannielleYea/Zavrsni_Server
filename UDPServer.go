@@ -2,8 +2,8 @@ package main
 
 import (
 	"net"
-	"fmt"
 	"time"
+	"fmt"
 )
 
 type player struct {
@@ -12,12 +12,19 @@ type player struct {
 	active  bool
 }
 
+type game struct {
+	gameId    string
+	playerOne player
+	playerTwo player
+}
+
 var conn *net.UDPConn
 var queue []player
+var activeGames []game
 
 func start(port string) {
-	udpAddr, err := net.ResolveUDPAddr("udp4", port)
 
+	udpAddr, err := net.ResolveUDPAddr("udp4", port)
 	fmt.Println(udpAddr)
 
 	if err != nil {
@@ -26,6 +33,7 @@ func start(port string) {
 	}
 
 	conn, err = net.ListenUDP("udp", udpAddr)
+	fmt.Println("Started listening: Queue server")
 
 	if err != nil {
 		panic(err)
@@ -41,27 +49,27 @@ func start(port string) {
 
 func matchMakingAlgorithm(con *net.UDPConn) {
 	for {
-		if len(queue) >= 2 {
-			fmt.Println("Game found")
+		if cap(queue) >= 2 {
+			//fmt.Println(cap(queue))
+			//fmt.Println("Game found")
+			fmt.Println("Connected: " + queue[0].address.String() + " AND " + queue[1].address.String())
 			con.WriteTo([]byte("{\"game_id\":\"asfjhasf\"}"), queue[1].address)
 			con.WriteTo([]byte("{\"game_id\":\"asfjhasf\"}"), queue[0].address)
 			//y := findElementIndex(queue[1].userId)
 			//queue = append(queue[:0], queue[1:]...)
-			dealocateElement(&queue[0])
-			//queue = append(queue[:0], queue[1:]...)
-			dealocateElement(&queue[0])
+			queue[0] = player{}
+			playerOne, queue := queue[0], queue[1:]
+			queue[0] = player{}
+			playerTwo, queue := queue[0], queue[1:]
+
+			activeGames = append(activeGames, game{playerOne: playerOne, playerTwo: playerTwo})
+			//forDelete = nil
+			//_, queue = queue[0], queue[1:]
 			//x := findElementIndex(queue[0].userId)
-
-			go func() {
-			}()
-
 		} else {
 			time.Sleep(time.Second)
 		}
 	}
-}
-func dealocateElement(p *player) {
-	p = nil
 }
 
 func handleConnection(con *net.UDPConn) {
@@ -73,7 +81,8 @@ func handleConnection(con *net.UDPConn) {
 		return
 	}
 	//conn.WriteTo([]byte("ACK"), addr)
-	fmt.Println(string(buffer))
+	//fmt.Println(con.LocalAddr().String())
+	//fmt.Println("Player with id: " + string(buffer))
 
 	if contains(string(buffer)) {
 		updateQueuePlayer(string(buffer))
@@ -82,14 +91,22 @@ func handleConnection(con *net.UDPConn) {
 		ply.userId = string(buffer)
 		ply.address = addr
 		ply.active = true
-		queue = append(queue, ply)
+
+		if contains(ply.userId) {
+			index := findElementIndex(ply.userId)
+			if index < 0 {
+				queue[index] = ply
+			}
+		} else {
+			queue = append(queue, ply)
+		}
 
 		go checkAlive(queue[len(queue)-1].userId)
 	}
 }
 
 func updateQueuePlayer(userId string) {
-	if len(queue) == 0 {
+	if cap(queue) == 0 {
 		return
 	}
 
@@ -117,7 +134,7 @@ func checkAlive(userId string) {
 				}
 			}
 			index++
-			if index >= len(queue) {
+			if index >= cap(queue) {
 				return
 			}
 		}
@@ -126,15 +143,19 @@ func checkAlive(userId string) {
 	index := findElementIndex(userId)
 
 	if index >= 0 {
-		dealocateElement(&queue[index])
-		queue = append(queue[:index], queue[index+1:]...)
+		if index == 0 {
+			_, queue = queue[0], queue[:1]
+		} else {
+			queue[index] = player{}
+			queue = append(queue[:index], queue[index+1:]...)
+		}
 	}
 
-	fmt.Println(queue)
+	//fmt.Println(queue)
 }
 
 func findElementIndex(userId string) int {
-	if len(queue) == 0 {
+	if cap(queue) == 0 {
 		return 0
 	}
 
@@ -153,9 +174,4 @@ func contains(user string) bool {
 		}
 	}
 	return false
-}
-
-func sendGameData(data []byte, addr net.Addr) {
-
-	conn.WriteTo(data, addr)
 }
