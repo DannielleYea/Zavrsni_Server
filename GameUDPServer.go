@@ -60,25 +60,33 @@ func handleMove(gameConn *net.UDPConn, addr *net.UDPAddr, buffer []byte, n int) 
 		return
 	}
 
-	if move.Player == 1 {
-		fmt.Println("Plaer 1")
-		for _, game := range activeGames {
-			if game.playerOne.userId == move.UserId {
-				sendTo := game.playerTwo.address
-				gameConn.WriteTo(buffer[:n], sendTo)
-				if move.Turn > 2 {
-					game.playerOne.address = addr
+	if move.Turn == 0 {
+		for index, game range activeGames {
+			if game.GameId = move.GameId {
+				if move.Player = 1 {
+					activeGames[index].PlayerOne.address = addr
+					fmt.Fprintln("ACK", addr)
+				} else {
+					activeGames[index].PlayerTwo.address = addr
+					fmt.Fprintln("ACK", addr)
 				}
 			}
 		}
 	} else {
-		fmt.Println("Plaer 2")
-		for _, game := range activeGames {
-			if game.playerTwo.userId == move.UserId {
-				sendTo := game.playerOne.address
-				gameConn.WriteTo(buffer, sendTo)
-				if move.Turn > 2 {
-					game.playerTwo.address = addr
+		if move.Player == 1 {
+			fmt.Println("Player 1")
+			for _, game := range activeGames {
+				if game.playerOne.userId == move.UserId {
+					sendTo := game.playerTwo.address
+					gameConn.WriteTo(buffer[:n], sendTo)
+				}
+			}
+		} else {
+			fmt.Println("Player 2")
+			for _, game := range activeGames {
+				if game.playerTwo.userId == move.UserId {
+					sendTo := game.playerOne.address
+					gameConn.WriteTo(buffer, sendTo)
 				}
 			}
 		}
