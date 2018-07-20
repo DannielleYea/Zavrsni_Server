@@ -4,6 +4,7 @@ import (
 	"net"
 	"time"
 	"fmt"
+	"encoding/json"
 )
 
 type player struct {
@@ -12,10 +13,18 @@ type player struct {
 	active  bool
 }
 
+var queueNumberOfPlayers int
+
 type game struct {
 	gameId    string
 	playerOne player
 	playerTwo player
+}
+
+type sendGameData struct {
+	GameId    string `json:"game_id"`
+	PlayerOne string `json:"player_one"`
+	PlayerTwo string `json:"player_two"`
 }
 
 var conn *net.UDPConn
@@ -49,20 +58,35 @@ func start(port string) {
 
 func matchMakingAlgorithm(con *net.UDPConn) {
 	for {
-		if cap(queue) >= 2 {
+		if queueNumberOfPlayers >= 2 {
+			fmt.Println("Game foind")
+			fmt.Println(queue[1].userId)
 			//fmt.Println(cap(queue))
 			//fmt.Println("Game found")
 			fmt.Println("Connected: " + queue[0].address.String() + " AND " + queue[1].address.String())
-			con.WriteTo([]byte("{\"game_id\":\"asfjhasf\"}"), queue[1].address)
-			con.WriteTo([]byte("{\"game_id\":\"asfjhasf\"}"), queue[0].address)
+			var gameData sendGameData
+			gameData.GameId = "asfjhasf"
+			gameData.PlayerTwo = string(queue[0].userId)
+			gameData.PlayerOne = string(queue[1].userId)
+			decoded, err := json.Marshal(gameData)
+
+			if err != nil {
+				panic(err)
+				return
+			}
+
+			con.WriteTo([]byte(decoded), queue[0].address)
+			con.WriteTo([]byte(decoded), queue[1].address)
+			//con.WriteTo([]byte("{\"game_id\":\"asfjhasf\"}"), queue[0].address)
 			//y := findElementIndex(queue[1].userId)
 			//queue = append(queue[:0], queue[1:]...)
-			queue[0] = player{}
 			playerOne, queue := queue[0], queue[1:]
-			queue[0] = player{}
 			playerTwo, queue := queue[0], queue[1:]
 
 			activeGames = append(activeGames, game{playerOne: playerOne, playerTwo: playerTwo})
+			playerOne = player{}
+			playerTwo = player{}
+			queueNumberOfPlayers -= 2
 			//forDelete = nil
 			//_, queue = queue[0], queue[1:]
 			//x := findElementIndex(queue[0].userId)
@@ -74,21 +98,23 @@ func matchMakingAlgorithm(con *net.UDPConn) {
 
 func handleConnection(con *net.UDPConn) {
 	buffer := make([]byte, 1024)
-	_, addr, err := con.ReadFromUDP(buffer)
+	n, addr, err := con.ReadFromUDP(buffer)
 
 	if err != nil {
 		panic(err)
 		return
 	}
+
+	userId := string(buffer[:n])
 	//conn.WriteTo([]byte("ACK"), addr)
 	//fmt.Println(con.LocalAddr().String())
-	//fmt.Println("Player with id: " + string(buffer))
+	fmt.Println("Player with id: " + userId)
 
-	if contains(string(buffer)) {
-		updateQueuePlayer(string(buffer))
+	if contains(userId) {
+		updateQueuePlayer(userId)
 	} else {
 		var ply player
-		ply.userId = string(buffer)
+		ply.userId = userId
 		ply.address = addr
 		ply.active = true
 
@@ -100,6 +126,7 @@ func handleConnection(con *net.UDPConn) {
 		} else {
 			queue = append(queue, ply)
 		}
+		queueNumberOfPlayers++
 
 		go checkAlive(queue[len(queue)-1].userId)
 	}
@@ -128,6 +155,7 @@ func checkAlive(userId string) {
 					queue[index].active = false
 					break
 				} else {
+					queueNumberOfPlayers--
 					fmt.Println("Dead: " + queue[index].address.String())
 					active = false
 					break
