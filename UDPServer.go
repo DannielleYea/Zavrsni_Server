@@ -5,6 +5,7 @@ import (
 	"time"
 	"fmt"
 	"encoding/json"
+	"math/rand"
 )
 
 type player struct {
@@ -19,6 +20,7 @@ type game struct {
 	gameId    string
 	playerOne player
 	playerTwo player
+	board     [3][3]int
 }
 
 type sendGameData struct {
@@ -59,13 +61,10 @@ func start(port string) {
 func matchMakingAlgorithm(con *net.UDPConn) {
 	for {
 		if queueNumberOfPlayers >= 2 {
-			fmt.Println("Game foind")
-			fmt.Println(queue[1].userId)
-			//fmt.Println(cap(queue))
-			//fmt.Println("Game found")
+
 			fmt.Println("Connected: " + queue[0].address.String() + " AND " + queue[1].address.String())
 			var gameData sendGameData
-			gameData.GameId = "asfjhasf"
+			gameData.GameId = "asf" + string(rand.Intn(100))
 			gameData.PlayerTwo = string(queue[0].userId)
 			gameData.PlayerOne = string(queue[1].userId)
 			decoded, err := json.Marshal(gameData)
@@ -83,13 +82,14 @@ func matchMakingAlgorithm(con *net.UDPConn) {
 			playerOne, queue := queue[0], queue[1:]
 			playerTwo, queue := queue[0], queue[1:]
 
-			activeGames = append(activeGames, game{playerOne: playerOne, playerTwo: playerTwo})
+			activeGames = append(activeGames, game{gameId: gameData.GameId, playerOne: playerOne, playerTwo: playerTwo})
 			playerOne = player{}
 			playerTwo = player{}
-			queueNumberOfPlayers -= 2
+			queueNumberOfPlayers = queueNumberOfPlayers - 2
 			//forDelete = nil
 			//_, queue = queue[0], queue[1:]
 			//x := findElementIndex(queue[0].userId)
+			fmt.Println(queue)
 		} else {
 			time.Sleep(time.Second)
 		}
@@ -113,6 +113,7 @@ func handleConnection(con *net.UDPConn) {
 	if contains(userId) {
 		updateQueuePlayer(userId)
 	} else {
+		fmt.Println("Player " + userId + " has come to queue")
 		var ply player
 		ply.userId = userId
 		ply.address = addr
@@ -126,7 +127,7 @@ func handleConnection(con *net.UDPConn) {
 		} else {
 			queue = append(queue, ply)
 		}
-		queueNumberOfPlayers++
+		queueNumberOfPlayers = queueNumberOfPlayers + 1
 
 		go checkAlive(queue[len(queue)-1].userId)
 	}
@@ -155,31 +156,17 @@ func checkAlive(userId string) {
 					queue[index].active = false
 					break
 				} else {
-					queueNumberOfPlayers--
+					//queueNumberOfPlayers = queueNumberOfPlayers - 1
 					fmt.Println("Dead: " + queue[index].address.String())
+					queue[index] = player{}
+					queue = append(queue[:index], queue[index+1:]...)
 					active = false
 					break
 				}
 			}
-			index++
-			if index >= cap(queue) {
-				return
-			}
 		}
 	}
-
-	index := findElementIndex(userId)
-
-	if index >= 0 {
-		if index == 0 {
-			_, queue = queue[0], queue[:1]
-		} else {
-			queue[index] = player{}
-			queue = append(queue[:index], queue[index+1:]...)
-		}
-	}
-
-	//fmt.Println(queue)
+	fmt.Println(queue)
 }
 
 func findElementIndex(userId string) int {

@@ -10,7 +10,7 @@ import (
 	//"time"
 )
 
-var addr = "192.168.5.19"
+var addr = "192.168.5.12"
 
 var db *sql.DB
 var err error
@@ -20,7 +20,7 @@ type QueryUser struct {
 	writer http.ResponseWriter
 }
 
-var queryData []QueryUser
+//var queryData []QueryUser
 
 type SendData struct {
 	Code    int       `json:"code"`
@@ -288,7 +288,7 @@ func getInQuery(w http.ResponseWriter, r *http.Request) {
 	query.user = user
 	query.writer = w
 
-	queryData = append(queryData, query)
+	//queryData = append(queryData, query)
 
 	decoded, err := json.Marshal(addr)
 
@@ -472,6 +472,7 @@ func checkAuth(r *http.Request) bool {
 func main() {
 
 
+	go startGameServer(addr + ":4500")
 	go start(addr + ":1000")
 	mux := http.NewServeMux()
 
@@ -502,7 +503,6 @@ func main() {
 	mux.HandleFunc("/getFriendList", getFriendList)
 	mux.HandleFunc("/getUserById", getUserById)
 
-	go http.ListenAndServe(":80", mux)
-	startGameServer(addr + ":5000")
+	http.ListenAndServe(":80", mux)
 
 }

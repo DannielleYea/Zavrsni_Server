@@ -8,6 +8,7 @@ import (
 
 type GameMove struct {
 	UserId string `json:"user_id"`
+	GameId string `json:"game_id"`
 	Turn   int    `json:"turn"`
 	Feield int    `json:"field"`
 	Player int    `json:"player"`
@@ -53,6 +54,8 @@ func handleMove(gameConn *net.UDPConn, addr *net.UDPAddr, buffer []byte, n int) 
 
 	var move GameMove
 
+	fmt.Println(string(buffer[:n]))
+
 	err := json.Unmarshal(buffer[:n], &move)
 
 	if err != nil {
@@ -61,33 +64,64 @@ func handleMove(gameConn *net.UDPConn, addr *net.UDPAddr, buffer []byte, n int) 
 	}
 
 	if move.Turn == 0 {
-		for index, game range activeGames {
-			if game.GameId = move.GameId {
-				if move.Player = 1 {
-					activeGames[index].PlayerOne.address = addr
-					fmt.Fprintln("ACK", addr)
+		fmt.Println("Player " + move.UserId + " confirmed game")
+		for index, game := range activeGames {
+			if game.gameId == move.GameId {
+				if move.Player == 1 {
+					activeGames[index].playerOne.address = addr
+					//gameConn.WriteTo([]byte("OK"), activeGames[index].playerOne.address)
+					gameConn.WriteTo([]byte("OK"), addr)
 				} else {
-					activeGames[index].PlayerTwo.address = addr
-					fmt.Fprintln("ACK", addr)
+					activeGames[index].playerTwo.address = addr
+					//gameConn.WriteTo([]byte("OK"), activeGames[index].playerTwo.address)
+					gameConn.WriteTo([]byte("OK"), addr)
 				}
 			}
 		}
 	} else {
 		if move.Player == 1 {
 			fmt.Println("Player 1")
-			for _, game := range activeGames {
-				if game.playerOne.userId == move.UserId {
+			for index, game := range activeGames {
+				if game.gameId == move.GameId {
 					sendTo := game.playerTwo.address
-					gameConn.WriteTo(buffer[:n], sendTo)
+					writeAMove(&activeGames[index], move)
+					if move.Turn > 4 {
+						checkGame(&activeGames[index], &move)
+					}
+
+					decoded, _ := json.Marshal(move)
+					gameConn.WriteTo(decoded, sendTo)
+					if move.Winner != 0 {
+						gameConn.WriteTo(decoded, addr)
+					}
 				}
 			}
 		} else {
 			fmt.Println("Player 2")
-			for _, game := range activeGames {
-				if game.playerTwo.userId == move.UserId {
+			for index, game := range activeGames {
+				if game.gameId == move.GameId {
 					sendTo := game.playerOne.address
-					gameConn.WriteTo(buffer, sendTo)
+
+					writeAMove(&activeGames[index], move)
+					if move.Turn > 4 {
+						checkGame(&activeGames[index], &move)
+					}
+
+					decoded, _ := json.Marshal(move)
+					gameConn.WriteTo(decoded, sendTo)
+					if move.Winner != 0 {
+						gameConn.WriteTo(decoded, addr)
+					}
 				}
+			}
+		}
+	}
+
+	if move.Winner != 0 {
+		for index, currentGame := range activeGames {
+			if currentGame.gameId == move.GameId {
+				activeGames[index] = game{}
+				activeGames = append(activeGames[:index], activeGames[index + 1:]...)
 			}
 		}
 	}
