@@ -24,6 +24,8 @@ func checkGame(game *game, move *GameMove) {
 		move.Winner = move.Player
 	} else if game.board[2][0] == move.Player && game.board[2][1] == move.Player && game.board[2][2] == move.Player {
 		move.Winner = move.Player
+	} else if move.Turn == 9 {
+		move.Winner = 3
 	}
 }
 

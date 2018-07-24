@@ -7,7 +7,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"net/http"
 	"container/list"
-	//"time"
 )
 
 var addr = "192.168.5.12"
@@ -26,6 +25,11 @@ type SendData struct {
 	Code    int       `json:"code"`
 	Message string    `json:"message"`
 	Data    LoginData `json:"data"`
+}
+type SnedFriendList struct {
+	Code    int      `json:"code"`
+	Message string   `json:"message"`
+	Data    []Friend `json:"data"`
 }
 
 type RegisterData struct {
@@ -46,7 +50,7 @@ type ResponseMessage struct {
 	Message string `json:"message"`
 }
 type Friend struct {
-	UserId   int    `json:"user_id"`
+	UserId   string `json:"user_id"`
 	Username string `json:"username"`
 }
 
@@ -301,6 +305,21 @@ func getInQuery(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func getServerAddress(w http.ResponseWriter, r *http.Request) {
+	if !checkAuth(r) {
+		sendResonseMessage(w, 8, "Authentication needed!")
+		return
+	}
+
+	decoded, err := json.Marshal(addr)
+
+	if err != nil {
+		panic(err)
+		sendResonseMessage(w, 10, "Internal error")
+	}
+	fmt.Fprint(w, string(decoded))
+
+}
 func resetPassword(w http.ResponseWriter, r *http.Request) {
 
 	if !checkAuth(r) {
@@ -398,7 +417,13 @@ func getFriendList(w http.ResponseWriter, r *http.Request) {
 
 		lista = append(lista, user)
 	}
-	decoded, err := json.Marshal(lista)
+
+	var data SnedFriendList
+
+	data.Code = 1
+	data.Data = lista
+
+	decoded, err := json.Marshal(data)
 	if err != nil {
 		panic(err)
 		sendResonseMessage(w, 10, "Internal error")
@@ -449,6 +474,34 @@ func getUserById(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func removePlayerFromFriendQueue(w http.ResponseWriter, r *http.Request) {
+	if !checkAuth(r) {
+		sendResonseMessage(w, 8, "Authentication needed!")
+		return
+	}
+
+	err = r.ParseForm()
+
+	if r.Form.Encode() == "" {
+		sendResonseMessage(w, 7, "Empty post form")
+		return
+	}
+
+	if err != nil {
+		sendResonseMessage(w, 3, "Error with Form data")
+		return
+	}
+
+	userId := r.FormValue("user_id")
+
+	for index, player := range FriendActivePlayers {
+		if player.UserId == userId {
+			FriendActivePlayers[index] = FriendActivePlayer{}
+			FriendActivePlayers = append(FriendActivePlayers[index:], FriendActivePlayers[index+1:]...)
+		}
+	}
+}
+
 func sendResonseMessage(w http.ResponseWriter, code int, message string) {
 	var response ResponseMessage
 	response.Code = code
@@ -471,9 +524,9 @@ func checkAuth(r *http.Request) bool {
 
 func main() {
 
-
 	go startGameServer(addr + ":4500")
 	go start(addr + ":1000")
+	go startFriendServer(addr + ":1500")
 	mux := http.NewServeMux()
 
 	db, err = sql.Open("mysql", "root:xKji27rC@tcp(localhost:3306)/mydb")
@@ -489,7 +542,8 @@ func main() {
 		if auth == "K7DT8M18PLOM" {
 			fmt.Fprintln(w, "List of active API end points ")
 			fmt.Fprintln(w, "Register: /register \nLogin: /login\nForgotten Password /forgottenPassword\nReset Password /resetPassword\nGet in query /getInQuery"+
-				"\n/GetFriendList: /getFriendList\nGet user by Id: /getUserById ")
+				"\n/GetFriendList: /getFriendList\nGet user by Id: /getUserById\n/Get server address: /getServerAddress"+
+				"\n/Remove Player From Friend Queue: /removePlayerFromFriendQueue")
 		} else {
 			fmt.Fprintln(w, "Autentification needed!!")
 		}
@@ -502,6 +556,8 @@ func main() {
 	mux.HandleFunc("/getInQuery", getInQuery)
 	mux.HandleFunc("/getFriendList", getFriendList)
 	mux.HandleFunc("/getUserById", getUserById)
+	mux.HandleFunc("/getServerAddress", getServerAddress)
+	mux.HandleFunc("/removePlayerFromFriendQueue", removePlayerFromFriendQueue)
 
 	http.ListenAndServe(":80", mux)
 
