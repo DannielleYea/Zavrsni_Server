@@ -9,15 +9,20 @@ import (
 )
 
 type FriendRequest struct {
-	UserId       string `json:"user_id"`
-	FriendUserId string `json:"friend_user_id"`
-	Status       string `json:"status"`
-	Game         game   `json:"game_data"`
+	UserId       string       `json:"user_id"`
+	FriendUserId string       `json:"friend_user_id"`
+	Status       string       `json:"status"`
+	Game         sendGameData `json:"game_data"`
 }
 
 type FriendActivePlayer struct {
 	UserId  string
 	Address net.Addr
+}
+
+type FriendGameData struct {
+	GameData sendGameData `json:"game_data"`
+	Status   string       `json:"status"`
 }
 
 var GameOnHold []game
@@ -55,25 +60,29 @@ func handleFriendRequest(friendConn *net.UDPConn) {
 		return
 	}
 
-	go handleGame(friendConn, addr, buffer, n)
+	go handleFriendGame(friendConn, addr, buffer, n)
 }
 
-func handleGame(friendConn *net.UDPConn, udpAddr *net.UDPAddr, bytes []byte, i int) {
+func handleFriendGame(friendConn *net.UDPConn, udpAddr *net.UDPAddr, bytes []byte, i int) {
 
 	var data FriendRequest
-
-	json.Unmarshal(bytes, &data)
+	fmt.Println(string(bytes[:i]) + "Address: " + udpAddr.String())
+	json.Unmarshal(bytes[:i], &data)
 
 	if strings.Compare(data.Status, "Ask") == 0 {
 		fmt.Println("Ask")
 		for index, currentPlayer := range FriendActivePlayers {
-			if currentPlayer.UserId == data.UserId {
+			if currentPlayer.UserId == data.FriendUserId {
 				playerOne := player{userId: data.UserId, address: udpAddr}
-				game := game{gameId: "gsdag" + string(rand.Intn(100)), playerOne: playerOne}
+				sendForSend := sendGameData{GameId: "gsdag" + string(rand.Intn(100)), PlayerOne: data.UserId, PlayerTwo: data.FriendUserId}
+				game := game{gameId: sendForSend.GameId, playerOne: playerOne}
+
 				GameOnHold = append(GameOnHold, game)
-				request := FriendRequest{UserId: data.FriendUserId, FriendUserId: data.UserId, Status: "Request", Game: game}
+				request := FriendRequest{UserId: data.FriendUserId, FriendUserId: data.UserId, Status: "Request", Game: sendForSend}
 				decoded, _ := json.Marshal(request)
+				fmt.Println("Address: " + udpAddr.String())
 				friendConn.WriteTo(decoded, FriendActivePlayers[index].Address)
+				fmt.Println(string(decoded))
 				return
 			}
 		}
@@ -94,7 +103,9 @@ func handleGame(friendConn *net.UDPConn, udpAddr *net.UDPAddr, bytes []byte, i i
 				startGame.playerTwo = player{userId: data.UserId, address: udpAddr}
 				activeGames = append(activeGames, startGame)
 
-				encode, _ := json.Marshal(startGame)
+				friendGameData := FriendGameData{GameData: data.Game, Status: "Accept"}
+
+				encode, _ := json.Marshal(friendGameData)
 				friendConn.WriteTo(encode, startGame.playerOne.address)
 				friendConn.WriteTo(encode, startGame.playerTwo.address)
 

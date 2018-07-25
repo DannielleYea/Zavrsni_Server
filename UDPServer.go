@@ -12,6 +12,7 @@ type player struct {
 	userId  string
 	address net.Addr
 	active  bool
+	inGame  bool
 }
 
 var queueNumberOfPlayers int
@@ -158,6 +159,7 @@ func checkAlive(userId string) {
 				} else {
 					//queueNumberOfPlayers = queueNumberOfPlayers - 1
 					fmt.Println("Dead: " + queue[index].address.String())
+					queueNumberOfPlayers = queueNumberOfPlayers - 1
 					queue[index] = player{}
 					queue = append(queue[:index], queue[index+1:]...)
 					active = false

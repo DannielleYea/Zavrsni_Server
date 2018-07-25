@@ -64,9 +64,9 @@ func handleMove(gameConn *net.UDPConn, addr *net.UDPAddr, buffer []byte, n int) 
 	}
 
 	if move.Turn == 0 {
-		fmt.Println("Player " + move.UserId + " confirmed game")
 		for index, game := range activeGames {
 			if game.gameId == move.GameId {
+				fmt.Println("Player " + move.UserId + " confirmed game")
 				if move.Player == 1 {
 					activeGames[index].playerOne.address = addr
 					//gameConn.WriteTo([]byte("OK"), activeGames[index].playerOne.address)
