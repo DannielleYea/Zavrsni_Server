@@ -1,0 +1,107 @@
+Na uzorku od 10 sec;
+
+Klijent javlja stanje svake 2 sekunde
+
+3 Slučaja provjere klijenta - 2,5, 3 i 5 sekundi
+
+U 10 sekundi klijent se javi 5 puta (2, 4, 6, 8, 10 sekunda)
+
+Slučaj 1. server vrši provjeru u 2.5 , 5, 7.5 i 10 sekudni što ispada 4 puta
+Slučaj 2. server vrši provjeru u 3, 6, 9 sekudni što ispada 3 puta
+Slučaj 3. server vrši provjeru u 5, 10 sekudni što ispada 2 puta
+
+Slučaj 1. je bolji jer je precizniji.
+
+Razmak između zadnjeg javljanja i provjere.
+Server provjerava u 2, 4, 6, 8, 10 sekundi
+
+1. Slučaj: 2 |* 2,5 | 4 |* 5 | 6 |* 7.5 | 8 |* 10/10 |
+Razlike su: 1. 2.5 - 2 = 0.5 sec
+			2. 5 - 4 = 1 sec
+			3. 7.5 - 6 = 1.5 sec
+			4. 10 - 10 = 0 sec
+			Prosjek: (0,5 + 1 + 1,5 + 0) / 4 = 0,75 sec
+			
+2. Slučaj: 2 |* 3 | 4 |* 6/6 | 8 |* 9 | 10 |
+Razlike su: 1. 3 - 2 = 1 sec
+			2. 6 - 6 = 0 sec
+			3. 9 - 8 = 1 sec
+			Prosjek: (1 + 0 + 1) / 3 = 0,66 sec
+
+3. Slučaj: 2 | 4 |* 5 | 6 | 8 | 9 |* 10/10 |
+Razlike su: 1. 5 - 4 = 1 sec
+			2. 10 - 10 = 0 sec
+			Prosjek: (1 + 0) / 2 = 0,5 sec
+			
+Najmanja razlika od zadnjeg javljanja i provjere je za slučaj 3. 0,5 sec
+
+
+Razmak između prvog javljanja poslje provjere i sljedeće provjere.
+Server provjerava u 2, 4, 6, 8, 10 sekundi
+
+1. Slučaj: 2 |* 2,5 | 4 |* 5 | 6 |* 7.5 | 8 |* 10/10 |
+Razlike su: 1. 2.5 - 2 = 0.5 sec
+			2. 5 - 4 = 1 sec
+			3. 7.5 - 6 = 1.5 sec
+			4. 10 - 10 = 0 sec
+			Prosjek: (0,5 + 1 + 1,5 + 0) / 4 = 0,75 sec
+			
+2. Slučaj: 2 |* 3 | 4 |* 6/6 | 8 |* 9 | 10 |
+Razlike su: 1. 3 - 2 = 1 sec
+			2. 6 - 4 = 2 sec
+			3. 9 - 6 = 3 sec
+			4. 12 - 8 = 4 sec
+			Prosjek: (1 + 2 + 3) / 3 = 2 sec
+			
+3. Slučaj: 2 | 4 |* 5 | 6 | 8 |* 10/10 |
+Razlike su: 1. 5 - 2 = 3 sec
+			2. 10 - 4 = 6 sec
+			Prosjek: (3 + 6) / 2 = 4.5 sec
+			
+Najmannji prosjek ima slučaj jedan, svake 2,5 sekunde iznosi 0.75 sec
+
+Ako se uzme kasnjenje klijenta od 250 ms
+Time line izgleda sljedece
+2,25 sec | 4,5 sec | 6,75 sec | 9 sec |
+
+Prosječno vrijeme od posljednjeg javaljanja i provjere
+Slučaj 1. |2,25 |* 2.5 | 4.5 |* 5 | 6,75 |* 7.5 | 9 |* 10 |
+Razlike su: 1. 2.5 - 2.25 = 0.25
+			2. 5 - 4.5 = 0.5
+			3. 7.5 - 6.75 = 0.75
+			4. 10 - 9 = 1
+			Prosjek: (0.25 + 0.5 + 0.75 + 1) / 4 =  0.625
+			
+Slučaj 2. |2,25 |* 3 | 4.5 |* 6 | 6,75 |* 9/9 |
+Razlike su: 1. 3 - 2.25 = 0.75
+			2. 6.75 - 6 = 0.75
+			3. 9 - 9 = 0
+			Prosjek: (0.75 + 0.75 + 0) / 3 =  0.5	
+			
+Slučaj 3. |2,25 | 4.5 |* 5 | 6,75 | 9 |* 10 |
+Razlike su: 1. 5 - 4.5 = 0.5
+			2. 10 - 9 = 1
+			Prosjek: (0.5 + 1) / 2 =  0.75
+			
+Slučaj 2. ispada kao najbolji sa 0.5 sec
+
+Prosječno vrijeme od prvog javaljanja i sljededće provjere
+Slučaj 1. |2,25 |* 2.5 | 4.5 |* 5 | 6,75 |* 7.5 | 9 |* 10 |
+Razlike su: 1. 2.5 - 2.25 = 0.25
+			2. 5 - 4.5 = 0.5
+			3. 7.5 - 6.75 = 0.75
+			4. 10 - 9 = 1
+			Prosjek: (0.25 + 0.5 + 0.75 + 1) / 4 =  0.625
+			
+Slučaj 2. |2,25 |* 3 | 4.5 |* 6 | 6,75 |* 9/9 |
+Razlike su: 1. 3 - 2.25 = 0.75
+			2. 6 - 4.5 = 1.5
+			3. 9 - 6.75 = 2.25
+			Prosjek: (0.75 + 1.5 + 2.25) / 3 =  1.5	
+			
+Slučaj 4. |2,25 | 4.5 |* 5 | 6,75 | 9 |* 10 |
+Razlike su: 1. 5 - 2.25 = 2.75
+			2. 10 - 4.5 = 5.5
+			Prosjek: (2.75 + 5.5) / 2 =  4.125
+			
+Slučaj 1. je najbolji sa 0.625 sec
