@@ -1,6 +1,0 @@
-when connection is connected client sends user id,every other time client sends if he is still alive every 2 sec and sets flag "alive" to true
-
-//if addr is in queue then hold user in queue, if not delete
-
-if queue doesnt contain address add it to queue
-go func that sleep for 2,5 sec if flag "alive" is true sets it to false, otherwise delete address from queue
