@@ -16,3 +16,4 @@
 - fix service
 - add design
 - create something for asets
+- add mutex to structs that share memory space (sync.Mutex)
