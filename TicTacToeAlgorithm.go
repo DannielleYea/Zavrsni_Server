@@ -26,6 +26,7 @@ func checkGame(game *game, move *GameMove) {
 		move.Winner = move.Player
 	} else if move.Turn == 9 {
 		move.Winner = 3
+		db.Query("UPDATE game SET turns=9, draw=1 WHERE game_id='" + move.GameId + "');")
 	}
 }
 

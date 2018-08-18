@@ -9,7 +9,7 @@ import (
 	"container/list"
 )
 
-var addr = "192.168.5.12"
+var addr = "192.168.5.19"
 
 var db *sql.DB
 var err error
@@ -54,24 +54,47 @@ type Friend struct {
 	Username string `json:"username"`
 }
 
+type Game struct {
+	GameId    string `json:"game_id"`
+	PlayerOne string `json:"player_one"`
+	PlayerTwo string `json:"player_two"`
+	Time      int32  `json:"time"`
+	Winner    string `json:"winner"`
+	Draw      bool   `json:"draw"`
+	Turns     int    `json:"turns"`
+}
+
+type Response struct {
+	Code    int               `json:"code"`
+	Message string            `json:"message"`
+	Data    StatisticsResonse `json:"data"`
+}
+
+type StatisticsResonse struct {
+	Wins          int    `json:"wins"`
+	Draws         int    `json:"draws"`
+	Loses         int    `json:"loses"`
+	LastFiveGames []Game `json:"games"`
+}
+
 var query list.List
 
 func login(w http.ResponseWriter, r *http.Request) {
 
 	if !checkAuth(r) {
-		sendResonseMessage(w, 8, "Authentication needed!")
+		sendResonseMessage(w, 2, "Authentication needed!")
 		return
 	}
 
 	err := r.ParseForm()
 
 	if r.Form.Encode() == "" {
-		sendResonseMessage(w, 7, "Empty post form")
+		sendResonseMessage(w, 3, "Empty post form")
 		return
 	}
 
 	if err != nil {
-		sendResonseMessage(w, 5, "Error with form data")
+		sendResonseMessage(w, 4, "Error with form data")
 	}
 
 	var data RegisterData
@@ -82,7 +105,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 	selectResult, err := db.Query("SELECT * FROM user WHERE username='" + data.Username + "' AND password = '" + data.Password + "';")
 
 	if err != nil {
-		sendResonseMessage(w, 4, "Error with Database")
+		sendResonseMessage(w, 5, "Error with Database")
 		return
 	}
 
@@ -92,7 +115,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 		err = selectResult.Scan(&data.UserId, &data.Username, &data.Password, &data.Email)
 		if err != nil {
 			panic(err.Error())
-			sendResonseMessage(w, 6, "Error with Database")
+			sendResonseMessage(w, 5, "Error with Database")
 		}
 
 		var send SendData
@@ -102,34 +125,34 @@ func login(w http.ResponseWriter, r *http.Request) {
 		decoded, err := json.Marshal(send)
 		if err != nil {
 			panic(err)
-			sendResonseMessage(w, 10, "Internal error - parsing JSON")
+			sendResonseMessage(w, 7, "Internal error - parsing JSON")
 		}
 		fmt.Fprintln(w, string(decoded))
 		return
 	}
 
-	sendResonseMessage(w, 12, "Wrong username/password")
+	sendResonseMessage(w, 8, "Wrong username/password")
 
 }
 
 func register(w http.ResponseWriter, r *http.Request) {
 
 	if !checkAuth(r) {
-		sendResonseMessage(w, 8, "Authentication needed!")
+		sendResonseMessage(w, 2, "Authentication needed!")
 		return
 	}
 
 	r.ParseForm()
 
 	if r.Form.Encode() == "" {
-		sendResonseMessage(w, 7, "Empty post form")
+		sendResonseMessage(w, 3, "Empty post form")
 		return
 	}
 
 	var data RegisterData
 	err := r.ParseForm()
 	if err != nil {
-		sendResonseMessage(w, 3, "Error with Form data")
+		sendResonseMessage(w, 4, "Error with Form data")
 		fmt.Println(err)
 		return
 	}
@@ -145,7 +168,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 	querySelect.Next()
 
 	if err != nil {
-		sendResonseMessage(w, 2, "Error with Database")
+		sendResonseMessage(w, 5, "Error with Database")
 		fmt.Println(err)
 	}
 	var Count int
@@ -156,13 +179,13 @@ func register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if Count > 0 {
-		sendResonseMessage(w, 8, "Username already exists")
+		sendResonseMessage(w, 6, "Username already exists")
 		return
 	}
 	insert, err := db.Query("INSERT INTO user (user_id, username, password, email) VALUES(DEFAULT, '" + r.Form.Get("username") + "', '" + (data.Password) + "', '" + (data.Email) + "');")
 
 	if err != nil {
-		sendResonseMessage(w, 2, "Error with Database")
+		sendResonseMessage(w, 5, "Error with Database")
 		fmt.Println(err)
 	}
 
@@ -179,7 +202,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 		err = registeredUser.Scan(&data.UserId, &data.Username, &data.Password, &data.Email)
 		if err != nil {
 			panic(err.Error())
-			sendResonseMessage(w, 6, "Error with Database")
+			sendResonseMessage(w, 5, "Error with Database")
 		}
 
 		var send SendData
@@ -189,31 +212,30 @@ func register(w http.ResponseWriter, r *http.Request) {
 		decoded, err := json.Marshal(send)
 		if err != nil {
 			panic(err)
-			sendResonseMessage(w, 10, "Internal error - parsing JSON")
+			sendResonseMessage(w, 7, "Internal error - parsing JSON")
 		}
 		fmt.Fprintln(w, string(decoded))
 		return
 	}
 
-	//sendResonseMessage(w, 1, "User registered successfully")
 	insert.Close()
 }
 
 func forgottenPassword(w http.ResponseWriter, r *http.Request) {
 	if !checkAuth(r) {
-		sendResonseMessage(w, 8, "Authentication needed!")
+		sendResonseMessage(w, 2, "Authentication needed!")
 		return
 	}
 
 	err = r.ParseForm()
 
 	if r.Form.Encode() == "" {
-		sendResonseMessage(w, 7, "Empty post form")
+		sendResonseMessage(w, 3, "Empty post form")
 		return
 	}
 
 	if err != nil {
-		sendResonseMessage(w, 3, "Error with Form data")
+		sendResonseMessage(w, 4, "Error with Form data")
 		return
 	}
 
@@ -225,7 +247,7 @@ func forgottenPassword(w http.ResponseWriter, r *http.Request) {
 	selectQuery, err := db.Query("SELECT * FROM user WHERE username='" + data.Username + "' AND email='" + data.Email + "'")
 
 	if err != nil {
-		sendResonseMessage(w, 2, "Error with Database")
+		sendResonseMessage(w, 5, "Error with Database")
 		fmt.Println(err)
 		return
 	}
@@ -238,7 +260,7 @@ func forgottenPassword(w http.ResponseWriter, r *http.Request) {
 		err = selectQuery.Scan(&data.UserId, &data.Username, &data.Password, &data.Email)
 		if err != nil {
 			panic(err.Error())
-			sendResonseMessage(w, 6, "Error with Database")
+			sendResonseMessage(w, 5, "Error with Database")
 		}
 
 		if data.Password == "" {
@@ -246,10 +268,14 @@ func forgottenPassword(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		decoded, err := json.Marshal(data)
+		var send SendData
+		send.Code = 1
+		send.Data = data
+
+		decoded, err := json.Marshal(send)
 		if err != nil {
 			panic(err)
-			sendResonseMessage(w, 10, "Internal error")
+			sendResonseMessage(w, 7, "Internal error - parsing JSON")
 		}
 		fmt.Fprintln(w, string(decoded))
 	}
@@ -307,7 +333,7 @@ func getInQuery(w http.ResponseWriter, r *http.Request) {
 
 func getServerAddress(w http.ResponseWriter, r *http.Request) {
 	if !checkAuth(r) {
-		sendResonseMessage(w, 8, "Authentication needed!")
+		sendResonseMessage(w, 2, "Authentication needed!")
 		return
 	}
 
@@ -315,7 +341,7 @@ func getServerAddress(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		panic(err)
-		sendResonseMessage(w, 10, "Internal error")
+		sendResonseMessage(w, 7, "Internal error - parsing JSON")
 	}
 	fmt.Fprint(w, string(decoded))
 
@@ -323,19 +349,19 @@ func getServerAddress(w http.ResponseWriter, r *http.Request) {
 func resetPassword(w http.ResponseWriter, r *http.Request) {
 
 	if !checkAuth(r) {
-		sendResonseMessage(w, 8, "Authentication needed!")
+		sendResonseMessage(w, 2, "Authentication needed!")
 		return
 	}
 
 	err = r.ParseForm()
 
 	if r.Form.Encode() == "" {
-		sendResonseMessage(w, 7, "Empty post form")
+		sendResonseMessage(w, 3, "Empty post form")
 		return
 	}
 
 	if err != nil {
-		sendResonseMessage(w, 3, "Error with Form data")
+		sendResonseMessage(w, 4, "Error with Form data")
 		return
 	}
 
@@ -358,25 +384,30 @@ func resetPassword(w http.ResponseWriter, r *http.Request) {
 		for queryResult.Next() {
 			queryResult.Scan(&data.UserId, &data.Username, pass, &data.Email)
 
-			decoded, err := json.Marshal(data)
+			var send SendData
+			send.Code = 1
+			send.Data = data
+
+			decoded, err := json.Marshal(send)
 			if err != nil {
 				panic(err)
-				sendResonseMessage(w, 10, "Internal error")
+				sendResonseMessage(w, 7, "Internal error - parsing JSON")
 			}
+
 			fmt.Fprintln(w, string(decoded))
 
 			insert, err := db.Query("UPDATE user SET password='" + data.Password + "' WHERE user_id=" + data.UserId + ";")
 
 			if err != nil {
-				sendResonseMessage(w, 2, "Error with Database")
+				sendResonseMessage(w, 5, "Error with Database")
 				fmt.Println(err)
 			}
 
-			sendResonseMessage(w, 11, "Password updated successfully")
+			sendResonseMessage(w, 10, "Password updated successfully")
 			insert.Close()
 		}
 	} else {
-		sendResonseMessage(w, 12, "Password are not equal")
+		sendResonseMessage(w, 11, "Password are not equal")
 	}
 }
 
@@ -390,12 +421,12 @@ func getFriendList(w http.ResponseWriter, r *http.Request) {
 	err = r.ParseForm()
 
 	if r.Form.Encode() == "" {
-		sendResonseMessage(w, 7, "Empty post form")
+		sendResonseMessage(w, 3, "Empty post form")
 		return
 	}
 
 	if err != nil {
-		sendResonseMessage(w, 3, "Error with Form data")
+		sendResonseMessage(w, 4, "Error with Form data")
 		return
 	}
 
@@ -405,7 +436,7 @@ func getFriendList(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		panic(err)
-		sendResonseMessage(w, 2, "Error with Database")
+		sendResonseMessage(w, 5, "Error with Database")
 		return
 	}
 
@@ -426,7 +457,57 @@ func getFriendList(w http.ResponseWriter, r *http.Request) {
 	decoded, err := json.Marshal(data)
 	if err != nil {
 		panic(err)
-		sendResonseMessage(w, 10, "Internal error")
+		sendResonseMessage(w, 7, "Internal error - Parsing JSON")
+	}
+	fmt.Fprint(w, string(decoded))
+}
+
+func getFriendRequests(w http.ResponseWriter, r *http.Request) {
+	if !checkAuth(r) {
+		sendResonseMessage(w, 2, "Authentication needed!")
+		return
+	}
+
+	err = r.ParseForm()
+
+	if r.Form.Encode() == "" {
+		sendResonseMessage(w, 3, "Empty post form")
+		return
+	}
+
+	if err != nil {
+		sendResonseMessage(w, 4, "Error with Form data")
+		return
+	}
+
+	userId := r.FormValue("user_id")
+
+	selectQuery, err := db.Query("SELECT us.user_id, us.username FROM friendRequests f JOIN user us ON us.user_id = f.user_id WHERE f.friend_id=" + userId)
+
+	if err != nil {
+		panic(err)
+		sendResonseMessage(w, 5, "Error with Database")
+		return
+	}
+
+	var user Friend
+	lista := []Friend{}
+
+	for selectQuery.Next() {
+		selectQuery.Scan(&user.UserId, &user.Username)
+
+		lista = append(lista, user)
+	}
+
+	var data SnedFriendList
+
+	data.Code = 1
+	data.Data = lista
+
+	decoded, err := json.Marshal(data)
+	if err != nil {
+		panic(err)
+		sendResonseMessage(w, 7, "Internal error - Parsing JSON")
 	}
 	fmt.Fprint(w, string(decoded))
 }
@@ -434,19 +515,19 @@ func getFriendList(w http.ResponseWriter, r *http.Request) {
 func getUserById(w http.ResponseWriter, r *http.Request) {
 
 	if !checkAuth(r) {
-		sendResonseMessage(w, 8, "Authentication needed!")
+		sendResonseMessage(w, 2, "Authentication needed!")
 		return
 	}
 
 	err = r.ParseForm()
 
 	if r.Form.Encode() == "" {
-		sendResonseMessage(w, 7, "Empty post form")
+		sendResonseMessage(w, 3, "Empty post form")
 		return
 	}
 
 	if err != nil {
-		sendResonseMessage(w, 3, "Error with Form data")
+		sendResonseMessage(w, 4, "Error with Form data")
 		return
 	}
 
@@ -467,7 +548,7 @@ func getUserById(w http.ResponseWriter, r *http.Request) {
 		decoded, err := json.Marshal(user)
 		if err != nil {
 			panic(err)
-			sendResonseMessage(w, 10, "Internal error")
+			sendResonseMessage(w, 7, "Internal error - Parsing JSON")
 		}
 		fmt.Fprint(w, string(decoded))
 	}
@@ -502,6 +583,197 @@ func removePlayerFromFriendQueue(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func acceptFriendRequest(w http.ResponseWriter, r *http.Request) {
+	if !checkAuth(r) {
+		sendResonseMessage(w, 2, "Authentication needed!")
+		return
+	}
+
+	err = r.ParseForm()
+
+	if r.Form.Encode() == "" {
+		sendResonseMessage(w, 3, "Empty post form")
+		return
+	}
+
+	if err != nil {
+		sendResonseMessage(w, 4, "Error with Form data")
+		return
+	}
+
+	userId := r.FormValue("user_id")
+	friendId := r.FormValue("friend_id")
+
+	_, err := db.Query("DELETE FROM `friendrequests` WHERE user_id=" + friendId + " AND friend_id=" + userId)
+
+	if err != nil {
+		panic(err)
+		sendResonseMessage(w, 9, "Username and Email doesn't match any user")
+	}
+
+	_, err = db.Query("INSERT INTO `friendList`(user_id, friend_id) VALUES(" + userId + ", " + friendId + ");")
+
+	if err != nil {
+		panic(err)
+		sendResonseMessage(w, 9, "Username and Email doesn't match any user")
+	}
+
+	_, err = db.Query("INSERT INTO `friendList`(user_id, friend_id) VALUES(" + friendId + ", " + userId + ");")
+
+	if err != nil {
+		panic(err)
+		sendResonseMessage(w, 9, "Username and Email doesn't match any user")
+	}
+
+	sendResonseMessage(w, 1, "Success")
+}
+
+func declineFriendRequest(w http.ResponseWriter, r *http.Request) {
+	if !checkAuth(r) {
+		sendResonseMessage(w, 8, "Authentication needed!")
+		return
+	}
+
+	err = r.ParseForm()
+
+	if r.Form.Encode() == "" {
+		sendResonseMessage(w, 7, "Empty post form")
+		return
+	}
+
+	if err != nil {
+		sendResonseMessage(w, 3, "Error with Form data")
+		return
+	}
+
+	userId := r.FormValue("user_id")
+	friendId := r.FormValue("friend_id")
+
+	_, err := db.Query("DELETE FROM `friendrequests` WHERE user_id=" + friendId + " AND friend_id=" + userId)
+
+	if err != nil {
+		panic(err)
+		sendResonseMessage(w, 9, "Username and Email doesn't match any user")
+	}
+
+	sendResonseMessage(w, 4, "Success")
+}
+
+func sendFriendRequest(w http.ResponseWriter, r *http.Request) {
+	if !checkAuth(r) {
+		sendResonseMessage(w, 2, "Authentication needed!")
+		return
+	}
+
+	err = r.ParseForm()
+
+	if r.Form.Encode() == "" {
+		sendResonseMessage(w, 3, "Empty post form")
+		return
+	}
+
+	if err != nil {
+		sendResonseMessage(w, 4, "Error with Form data")
+		return
+	}
+
+	userId := r.FormValue("user_id")
+	friendUsername := r.FormValue("friend_username")
+
+	selectQuery, err := db.Query("SELECT * FROM user WHERE username='" + friendUsername + "';")
+
+	if err != nil {
+		panic(err)
+		sendResonseMessage(w, 5, "Error with Database")
+	}
+
+	var user LoginData
+
+	for selectQuery.Next() {
+		selectQuery.Scan(&user.UserId, &user.Username, &user.Password, &user.Email)
+
+		friendId := user.UserId
+
+		_, err = db.Query("INSERT INTO `friendRequests`(user_id, friend_id) VALUES(" + userId + ", " + friendId + ");")
+
+		if err != nil {
+			panic(err)
+			sendResonseMessage(w, 9, "Username and Email doesn't match any user")
+		}
+	}
+}
+
+func getStatistics(w http.ResponseWriter, r *http.Request) {
+	if !checkAuth(r) {
+		sendResonseMessage(w, 2, "Authentication needed!")
+		return
+	}
+
+	err = r.ParseForm()
+
+	if r.Form.Encode() == "" {
+		sendResonseMessage(w, 3, "Empty post form")
+		return
+	}
+
+	if err != nil {
+		sendResonseMessage(w, 4, "Error with Form data")
+		return
+	}
+
+	userId := r.FormValue("user_id")
+
+	selectQuery, err := db.Query("SELECT * FROM game WHERE player_one=" + userId + " OR player_two=" + userId)
+	if err != nil {
+		sendResonseMessage(w, 5, "Error with Database")
+		return
+	}
+
+	var gameData Game
+	var lastGames []Game
+	var wins int
+	var loses int
+	var draws int
+
+	for selectQuery.Next() {
+
+		selectQuery.Scan(&gameData.GameId, &gameData.PlayerOne, &gameData.PlayerTwo, &gameData.Time, &gameData.Winner, &gameData.Draw, &gameData.Turns)
+
+		if len(lastGames) == 6 {
+			lastGames = append(lastGames, gameData)
+			_, lastGames = lastGames[0], lastGames[:1]
+		} else {
+			lastGames = append(lastGames, gameData)
+		}
+
+		if gameData.Winner == userId {
+			wins++
+		} else if gameData.Draw {
+			draws++
+		} else if gameData.Winner != userId {
+			loses++
+		}
+	}
+
+	var statisticsResponse StatisticsResonse
+
+	statisticsResponse.Wins = wins
+	statisticsResponse.Draws = draws
+	statisticsResponse.Loses = loses
+	statisticsResponse.LastFiveGames = lastGames
+
+	var response Response
+	response.Data = statisticsResponse
+	response.Code = 1
+
+	decoded, err := json.Marshal(response)
+	if err != nil {
+		panic(err)
+		sendResonseMessage(w, 7, "Internal error - parsing JSON")
+	}
+	fmt.Fprintln(w, string(decoded))
+}
+
 func sendResonseMessage(w http.ResponseWriter, code int, message string) {
 	var response ResponseMessage
 	response.Code = code
@@ -524,7 +796,7 @@ func checkAuth(r *http.Request) bool {
 
 func main() {
 
-	go startGameServer(addr + ":4500")
+	go startGameServer(addr + ":4000")
 	go start(addr + ":1000")
 	go startFriendServer(addr + ":1500")
 	mux := http.NewServeMux()
@@ -558,7 +830,11 @@ func main() {
 	mux.HandleFunc("/getUserById", getUserById)
 	mux.HandleFunc("/getServerAddress", getServerAddress)
 	mux.HandleFunc("/removePlayerFromFriendQueue", removePlayerFromFriendQueue)
+	mux.HandleFunc("/acceptFriendRequest", acceptFriendRequest)
+	mux.HandleFunc("/declineFriendRequest", declineFriendRequest)
+	mux.HandleFunc("/sendFriendRequest", sendFriendRequest)
+	mux.HandleFunc("/getFriendRequests", getFriendRequests)
+	mux.HandleFunc("/getStatistics", getStatistics)
 
-	http.ListenAndServe(":80", mux)
-
+	http.ListenAndServe(":8000", mux)
 }
